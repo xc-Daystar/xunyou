@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>界园游龙小助手</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@400;500&family=Crimson+Text:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #F7F3ED;
+            --text-title: #2C2C2C;
+            --text-body: #5F5F5F;
+            --accent-red: #C04851;
+            --accent-gold: #D4B106;
+            --border-light: rgba(44, 44, 44, 0.1);
+            --border-medium: rgba(44, 44, 44, 0.2);
+        }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Noto Sans SC', 'PingFang SC', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-body);
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+        }
+        #app { position: relative; z-index: 1; height: 100%; }
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 16px 20px;
+            height: 100%;
+        }
+        .panel {
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid var(--border-light);
+            border-radius: 2px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .page-title {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-title);
+            text-align: center;
+            letter-spacing: 0.1em;
+            margin-bottom: 12px;
+        }
+        .mode-tabs {
+            display: flex;
+            margin-bottom: 12px;
+            border: 1px solid var(--border-medium);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .mode-tab {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-body);
+            background: rgba(255, 255, 255, 0.4);
+            cursor: pointer;
+            transition: all 0.2s;
+            border-right: 1px solid var(--border-light);
+        }
+        .mode-tab:last-child { border-right: none; }
+        .mode-tab:hover { background: rgba(255, 255, 255, 0.6); }
+        .mode-tab.active { background: var(--accent-red); color: #fff; }
+        .section {
+            margin-bottom: 10px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid var(--border-light);
+            border-radius: 2px;
+        }
+        .section-title {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-title);
+            margin-bottom: 10px;
+            padding-left: 8px;
+            border-left: 3px solid var(--accent-gold);
+        }
+        .coin-box {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(255,255,255,0.3);
+            border: 1px dashed var(--border-medium);
+            border-radius: 2px;
+        }
+        .coin-row {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+        .coin-slot-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .coin-slot {
+            width: 64px;
+            height: 64px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .coin-slot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .coin-slot:hover { transform: scale(1.05); }
+        .coin-slot.selected { box-shadow: 0 0 0 3px var(--accent-gold); }
+        .coin-slot.empty {
+            border: 2px dashed var(--border-medium);
+            background: rgba(255,255,255,0.5);
+        }
+        .coin-slot-label {
+            font-size: 10px;
+            color: var(--text-body);
+            text-align: center;
+            max-width: 70px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .coin-slot-label .type-tag {
+            font-size: 9px;
+            padding: 1px 4px;
+            border-radius: 2px;
+            color: #fff;
+            margin-right: 2px;
+        }
+        .coin-slot-label .type-tag.type-spend { background: #D4A5A5; }
+        .coin-slot-label .type-tag.type-li { background: #8B4513; }
+        .coin-slot-label .type-tag.type-heng { background: #5F9EA0; }
+        .coin-detail {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(212, 177, 6, 0.08);
+            border: 1px solid rgba(212, 177, 6, 0.3);
+            border-radius: 2px;
+            margin-top: 10px;
+        }
+        .coin-detail-img {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .coin-detail-info { flex: 1; }
+        .coin-detail-name {
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--text-title);
+        }
+        .coin-detail-effect {
+            font-size: 11px;
+            color: var(--text-body);
+            margin-top: 2px;
+        }
+        .coin-detail-remark {
+            font-size: 10px;
+            color: #888;
+            margin-top: 2px;
+            max-height: 40px;
+            overflow-y: auto;
+        }
+        .category-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .category-tab {
+            padding: 4px 8px;
+            font-size: 11px;
+            border: 1px solid var(--border-medium);
+            border-radius: 2px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.4);
+            transition: all 0.2s;
+        }
+        .category-tab:hover { background: rgba(255,255,255,0.6); }
+        .category-tab.active { background: var(--accent-gold); color: #fff; border-color: var(--accent-gold); }
+        .coin-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-height: 180px;
+            overflow-y: auto;
+            padding: 8px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+        }
+        .coin-item-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            width: 70px;
+        }
+        .coin-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+        .coin-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+        .coin-item:hover { transform: scale(1.1); }
+        .coin-item-selected { box-shadow: 0 0 0 2px var(--accent-gold); }
+        .coin-item-label {
+            font-size: 9px;
+            color: var(--text-body);
+            text-align: center;
+            max-width: 70px;
+            line-height: 1.2;
+        }
+        .coin-item-label .type-tag {
+            font-size: 8px;
+            padding: 1px 3px;
+            border-radius: 2px;
+            color: #fff;
+            margin-right: 2px;
+        }
+        .coin-item-label .type-tag.type-spend { background: #D4A5A5; }
+        .coin-item-label .type-tag.type-li { background: #8B4513; }
+        .coin-item-label .type-tag.type-heng { background: #5F9EA0; }
+        .coin-preview-section { background: rgba(212, 177, 6, 0.05); }
+        .coin-preview {
+            display: flex;
+            gap: 12px;
+            padding: 10px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 2px;
+        }
+        .coin-preview-img {
+            width: 56px;
+            height: 56px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .coin-preview-info { flex: 1; min-width: 0; }
+        .coin-preview-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .coin-preview-name {
+            font-family: 'Noto Serif SC', serif;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-title);
+        }
+        .coin-preview-type {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 2px;
+            color: #fff;
+        }
+        .coin-preview-type.type-spend { background: #D4A5A5; }
+        .coin-preview-type.type-li { background: #8B4513; }
+        .coin-preview-type.type-heng { background: #5F9EA0; }
+        .coin-preview-effect {
+            font-size: 12px;
+            color: var(--text-title);
+            line-height: 1.5;
+            margin-bottom: 4px;
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        .coin-preview-desc {
+            font-size: 11px;
+            color: var(--text-body);
+            font-style: italic;
+            margin-bottom: 4px;
+            max-height: 40px;
+            overflow-y: auto;
+        }
+        .coin-preview-source {
+            font-size: 10px;
+            color: var(--accent-red);
+            margin-bottom: 2px;
+            max-height: 40px;
+            overflow-y: auto;
+        }
+        .coin-preview-remark {
+            font-size: 10px;
+            color: #888;
+            max-height: 60px;
+            overflow-y: auto;
+        }
+        .input-group { margin-bottom: 8px; }
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 4px;
+            color: var(--text-body);
+        }
+        input[type="number"], select {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid var(--border-medium);
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.8);
+            color: var(--text-title);
+            font-size: 13px;
+        }
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235F5F5F' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            padding-right: 24px;
+        }
+        .btn-primary {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: var(--accent-red);
+            color: #fff;
+            border: none;
+            border-radius: 2px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover { background: #A83D45; }
+        .btn-danger {
+            background: transparent;
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+            padding: 4px 8px;
+            border-radius: 2px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .btn-danger:hover { background: var(--accent-red); color: #fff; }
+        .right-panel { display: flex; flex-direction: column; }
+        .box-display {
+            padding: 10px;
+            background: rgba(255,255,255,0.4);
+            border: 1px solid var(--border-light);
+            border-radius: 2px;
+            margin-bottom: 10px;
+        }
+        .box-coins {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+        }
+        .box-coin {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .box-coin img { width: 100%; height: 100%; object-fit: cover; }
+        .result-section { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+        .current-result {
+            padding: 12px;
+            background: rgba(212, 177, 6, 0.08);
+            border: 1px solid rgba(212, 177, 6, 0.3);
+            border-radius: 2px;
+            margin-bottom: 10px;
+        }
+        .result-label { font-size: 12px; color: var(--text-body); }
+        .result-value {
+            font-family: 'Crimson Text', serif;
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--accent-gold);
+        }
+        .result-config { font-size: 11px; color: var(--text-body); margin-top: 4px; }
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--border-medium), transparent);
+            margin: 10px 0;
+        }
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .history-title { font-size: 13px; font-weight: 700; color: var(--text-title); }
+        .probability-list { flex: 1; overflow-y: auto; }
+        .probability-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .probability-label { font-size: 12px; color: var(--text-title); }
+        .probability-meta { font-size: 10px; color: var(--text-body); margin-top: 2px; }
+        .probability-value { font-size: 16px; font-weight: 600; color: var(--accent-gold); }
+        .empty-state { text-align: center; padding: 16px; color: var(--text-body); font-size: 12px; }
+        .flex-row { display: flex; gap: 8px; }
+        .flex-row > * { flex: 1; }
+        .scroll-section { flex: 1; overflow-y: auto; min-height: 0; }
+        .combo-inputs { margin-top: 8px; }
+        .combo-row { display: flex; gap: 8px; }
+        .combo-item { flex: 1; }
+        .combo-item label { display: block; font-size: 11px; margin-bottom: 4px; color: var(--text-body); }
+        .combo-item input { width: 100%; padding: 6px; text-align: center; }
+        .combo-hint { font-size: 10px; color: var(--accent-red); margin-top: 6px; text-align: center; }
+        .expect-tabs { display: flex; margin-bottom: 10px; border: 1px solid var(--border-medium); border-radius: 2px; overflow: hidden; }
+        .expect-tab { flex: 1; padding: 6px; text-align: center; font-size: 12px; cursor: pointer; background: rgba(255,255,255,0.4); transition: all 0.2s; }
+        .expect-tab:first-child { border-right: 1px solid var(--border-light); }
+        .expect-tab:hover { background: rgba(255,255,255,0.6); }
+        .expect-tab.active { background: var(--accent-gold); color: #fff; }
+        .expect-coin-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; padding: 8px; background: rgba(255,255,255,0.3); border-radius: 2px; }
+        .expect-coin-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 6px; border-radius: 4px; transition: all 0.2s; }
+        .expect-coin-item:hover { background: rgba(212,177,6,0.1); }
+        .expect-coin-item.selected { background: rgba(212,177,6,0.2); box-shadow: 0 0 0 2px var(--accent-gold); }
+        .expect-coin-item img { width: 40px; height: 40px; border-radius: 4px; }
+        .expect-coin-name { font-size: 10px; color: var(--text-body); text-align: center; max-width: 50px; }
+        .expect-desc { font-size: 11px; color: var(--text-body); padding: 6px 8px; background: rgba(212,177,6,0.08); border-radius: 2px; margin-bottom: 8px; }
+    </style>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+    <div class="main-container">
+        <div class="panel">
+            <h1 class="page-title">界园游龙小助手</h1>
+            <div class="section">
+                <div class="section-title">当前钱盒配置</div>
+                <div class="box-coins">
+                    <div v-for="(coin, idx) in coinBox" :key="idx" class="box-coin" :title="coin ? coin.name : ''">
+                        <img v-if="coin" :src="coin.image">
+                    </div>
+                </div>
+                <div class="coinbox-stats">
+                    <span>花: {{ spendCount }} | 厉: {{ liCount }} | 衡: {{ hengCount }}</span>
+                    <span class="draw-count-config">
+                        容量: <input type="number" v-model.number="coinBoxCapacity" min="1" max="20" class="draw-count-input">
+                        投钱: <input type="number" v-model.number="drawCount" min="1" :max="coinBoxCapacity" class="draw-count-input">
+                    </span>
+                </div>
+            </div>
+            <div class="mode-tabs">
+                <div class="mode-tab" :class="{ active: mode === 'judge', disabled: planExchangeMode }" @click="!planExchangeMode && (mode = 'judge')">判定</div>
+                <div class="mode-tab" :class="{ active: mode === 'plan' }" @click="mode = 'plan'">筹谋</div>
+                <div class="mode-tab" :class="{ active: mode === 'expect', disabled: planExchangeMode }" @click="!planExchangeMode && (mode = 'expect')">期望</div>
+            </div>
+            <div class="scroll-section">
+                <div v-if="mode === 'judge'" class="section">
+                    <div class="section-title">概率计算</div>
+                    <div class="input-group">
+                        <label>目标通宝类型</label>
+                        <select v-model="coinType">
+                            <option value="spend">花钱</option>
+                            <option value="li">厉钱</option>
+                            <option value="heng">衡钱</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>计算条件</label>
+                        <select v-model="condition">
+                            <option value="atleast">至少</option>
+                            <option value="exact">固定数量</option>
+                            <option value="combo">指定组合</option>
+                        </select>
+                    </div>
+                    <div v-if="condition !== 'combo'" class="input-group">
+                        <label>目标数量（1-{{ drawCount }}）</label>
+                        <input type="number" v-model.number="targetCount" min="1" :max="drawCount">
+                    </div>
+                    <div v-if="condition === 'combo'" class="combo-inputs">
+                        <div class="combo-row">
+                            <div class="combo-item">
+                                <label>花钱</label>
+                                <input type="number" v-model.number="comboSpend" min="0" max="3">
+                            </div>
+                            <div class="combo-item">
+                                <label>厉钱</label>
+                                <input type="number" v-model.number="comboLi" min="0" max="3">
+                            </div>
+                            <div class="combo-item">
+                                <label>衡钱</label>
+                                <input type="number" v-model.number="comboHeng" min="0" max="3">
+                            </div>
+                        </div>
+                        <div class="combo-hint">总数必须为{{ drawCount }}</div>
+                    </div>
+                    <button class="btn-primary" @click="calculateProbability">计算概率</button>
+                </div>
+                <template v-if="mode === 'judge'">
+                    <div class="section">
+                        <div class="section-title">概率计算结果</div>
+                        <div v-if="currentResult" class="current-result">
+                            <div class="result-label">{{ currentResult.description }}的概率</div>
+                            <div class="result-value">{{ (currentResult.probability * 100).toFixed(2) }}%</div>
+                        </div>
+                        <div v-else class="empty-state">请设置钱盒并点击"计算概率"</div>
+                    </div>
+                    <div v-if="history.length > 0" class="section">
+                        <div class="history-header">
+                            <div class="section-title" style="margin-bottom:0;">历史记录</div>
+                            <button class="btn-danger" @click="history = []">清空</button>
+                        </div>
+                        <div v-for="(item, idx) in history.slice(0, 3)" :key="idx" class="probability-item">
+                            <div><div class="probability-label">{{ item.description }}</div></div>
+                            <div class="probability-value">{{ (item.probability * 100).toFixed(2) }}%</div>
+                        </div>
+                    </div>
+                </template>
+                <div v-if="mode === 'plan'" class="section">
+                    <div class="section-title">通宝交换</div>
+                    <div class="plan-container">
+                        <div class="plan-left">
+                            <div v-if="!planExchangeMode" class="plan-rules">
+                                <div class="plan-rules-title">交换规则</div>
+                                <div class="plan-rules-content">
+                                    <div class="plan-rule-item">
+                                        <div class="plan-rule-label">A池（高级）</div>
+                                        <div class="plan-rule-desc">聚力则强、人间长存、茧成绢等高级通宝</div>
+                                    </div>
+                                    <div class="plan-rule-item">
+                                        <div class="plan-rule-label">B池（中级）</div>
+                                        <div class="plan-rule-desc">生材百相、庆丰收、塞上月等中级通宝</div>
+                                    </div>
+                                    <div class="plan-rule-item">
+                                        <div class="plan-rule-label">C池（低级）</div>
+                                        <div class="plan-rule-desc">奇土生金、水生木护等低级通宝</div>
+                                    </div>
+                                    <div class="plan-rule-item">
+                                        <div class="plan-rule-label">升级/降级</div>
+                                        <div class="plan-rule-desc">某些通宝交换后会升级或降级到其他池</div>
+                                    </div>
+                                </div>
+                                <button class="plan-start-btn" @click="startPlanExchange">开始交换</button>
+                            </div>
+                            <div v-else class="plan-exchange-info">
+                                <div class="plan-exchange-status">交换中...</div>
+                                <button class="plan-end-btn" @click="endPlanExchange">结束交换</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div v-if="mode === 'expect'" class="section">
+                    <div class="section-title">收益期望计算</div>
+                    <div class="expect-tabs">
+                        <div class="expect-tab" :class="{ active: expectCategory === 'coin' }" @click="expectCategory = 'coin'">通宝计算</div>
+                        <div class="expect-tab" :class="{ active: expectCategory === 'relic' }" @click="expectCategory = 'relic'">藏品计算</div>
+                    </div>
+                    <!-- 通宝计算 -->
+                    <template v-if="expectCategory === 'coin'">
+                        <div class="expect-coin-list">
+                            <div v-for="coin in calculableCoins" :key="coin.id" 
+                                 class="expect-coin-item" 
+                                 :class="{ selected: expectTarget === coin.id }"
+                                 @click="expectTarget = coin.id"
+                                 :title="coin.name + ' - ' + coin.expectDesc">
+                                <img :src="coin.image">
+                                <div class="expect-coin-name">{{ coin.name }}</div>
+                            </div>
+                        </div>
+                        <div v-if="calculableCoins.length === 0" class="empty-state">暂无支持计算的通宝</div>
+                        <!-- 修性情计算 -->
+                        <template v-if="expectTarget === 'rogue_5_copper_U_8'">
+                            <div class="expect-desc">投出时目标生命值上限+2</div>
+                            <div class="input-group">
+                                <label>投钱次数</label>
+                                <input type="number" v-model.number="throwCount" min="1" max="100">
+                            </div>
+                            <button class="btn-primary" @click="calculateXiuXingQing">计算期望生命上限</button>
+                        </template>
+                        <!-- 茧成绢计算 -->
+                        <template v-if="expectTarget === 'rogue_5_copper_R_08'">
+                            <div class="expect-desc">投出时每有4点源石锭获得1点（单次最多99）</div>
+                            <div class="input-group">
+                                <label>当前源石锭</label>
+                                <input type="number" v-model.number="baseYuanshiding" min="0" max="999">
+                            </div>
+                            <div class="input-group">
+                                <label>计算模式</label>
+                                <select v-model="jcjMode">
+                                    <option value="byThrow">指定投掷次数 → 期望源石锭</option>
+                                    <option value="byTarget">指定目标源石锭 → 期望投掷次数</option>
+                                </select>
+                            </div>
+                            <div v-if="jcjMode === 'byThrow'" class="input-group">
+                                <label>投掷次数</label>
+                                <input type="number" v-model.number="jcjThrowCount" min="1" max="100">
+                            </div>
+                            <div v-if="jcjMode === 'byTarget'" class="input-group">
+                                <label>目标源石锭</label>
+                                <input type="number" v-model.number="jcjTargetYuan" min="1" max="999">
+                            </div>
+                            <button class="btn-primary" @click="calculateJianChengJuan">计算</button>
+                        </template>
+                    </template>
+                    <!-- 藏品计算 -->
+                    <template v-if="expectCategory === 'relic'">
+                        <div class="expect-coin-list">
+                            <div v-for="relic in calculableRelics" :key="relic.id" 
+                                 class="expect-coin-item" 
+                                 :class="{ selected: expectRelicTarget === relic.id }"
+                                 @click="expectRelicTarget = relic.id"
+                                 :title="relic.name + ' - ' + relic.effect">
+                                <img :src="relic.image">
+                                <div class="expect-coin-name">{{ relic.name }}</div>
+                            </div>
+                        </div>
+                        <div v-if="calculableRelics.length === 0" class="empty-state">暂无支持计算的藏品</div>
+                        <!-- 异食兽像计算 -->
+                        <template v-if="expectRelicTarget === 'rogue_5_relic_speg_2'">
+                            <div class="expect-desc">投出3枚厉钱时，获得3点生命上限+3点护盾</div>
+                            <div class="input-group">
+                                <label>投钱次数</label>
+                                <input type="number" v-model.number="relicThrowCount" min="1" max="100">
+                            </div>
+                            <button class="btn-primary" @click="calculateYishishou">计算期望收益</button>
+                        </template>
+                        <!-- 吉运有三计算 -->
+                        <template v-if="expectRelicTarget === 'rogue_5_relic_speg_3'">
+                            <div class="expect-desc">投出3枚花钱时，获得8源石锭+1希望</div>
+                            <div class="input-group">
+                                <label>投钱次数</label>
+                                <input type="number" v-model.number="relicThrowCount" min="1" max="100">
+                            </div>
+                            <button class="btn-primary" @click="calculateJiyunyousan">计算期望收益</button>
+                        </template>
+                    </template>
+                </div>
+                <template v-if="mode === 'expect'">
+                    <div class="section">
+                        <div class="section-title">期望收益结果</div>
+                        <div v-if="expectResult" class="current-result">
+                            <div class="result-label">{{ expectResult.coinName }}</div>
+                            <div class="result-value">{{ expectResult.expectedValue }} {{ expectResult.benefitUnit }}</div>
+                            <div class="result-config">{{ expectResult.detail }}</div>
+                        </div>
+                        <div v-else class="empty-state">请选择目标并计算</div>
+                    </div>
+                    <div v-if="expectHistory.length > 0" class="section">
+                        <div class="history-header">
+                            <div class="section-title" style="margin-bottom:0;">历史记录</div>
+                            <button class="btn-danger" @click="expectHistory = []">清空</button>
+                        </div>
+                        <div v-for="(item, idx) in expectHistory.slice(0, 3)" :key="idx" class="probability-item">
+                            <div><div class="probability-label">{{ item.coinName }}</div></div>
+                            <div class="probability-value">{{ item.expectedValue }} {{ item.benefitUnit }}</div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+        <div class="panel right-panel">
+            <div class="section">
+                <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span v-if="!planExchangeMode">钱盒（点击选中槽位，再点击下方通宝替换）</span>
+                    <span v-else>钱盒（点击选择要交换的通宝）</span>
+                    <span v-if="!planExchangeMode" class="undo-redo-btns">
+                        <button class="undo-btn" @click="undoCoinBox" :disabled="coinBoxHistory.length === 0" title="撤销">撤销</button>
+                        <button class="redo-btn" @click="redoCoinBox" :disabled="coinBoxFuture.length === 0" title="还原">还原</button>
+                    </span>
+                </div>
+                <div class="coin-box">
+                    <div v-for="(row, rowIdx) in coinBoxRows" :key="'row'+rowIdx" class="coin-row">
+                        <div v-for="(coin, colIdx) in row.coins" :key="'slot'+row.startIdx+colIdx" class="coin-slot-wrapper">
+                            <div class="coin-slot" 
+                                 :class="{ selected: selectedSlot === row.startIdx + colIdx }"
+                                 @click="selectSlot(row.startIdx + colIdx)">
+                                <img v-if="coin" :src="coin.image" :title="coin.name">
+                                <span v-if="planExchangeMode && coin && getCoinMark(coin.name)" 
+                                      class="coin-mark" :class="'mark-' + getCoinMark(coin.name).type">
+                                    {{ getCoinMark(coin.name).text }}
+                                </span>
+                            </div>
+                            <div v-if="coin" class="coin-slot-label">
+                                <span class="type-tag" :class="'type-' + coin.type">{{ typeNames[coin.type] }}</span>{{ coin.name }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div v-if="selectedSlot !== null && coinBox[selectedSlot] && !planExchangeMode" class="coin-detail">
+                    <img class="coin-detail-img" :src="coinBox[selectedSlot].image">
+                    <div class="coin-detail-info">
+                        <div class="coin-detail-name">{{ coinBox[selectedSlot].name }}</div>
+                        <div class="coin-detail-effect">{{ coinBox[selectedSlot].effect }}</div>
+                        <div v-if="coinBox[selectedSlot].remark" class="coin-detail-remark">{{ coinBox[selectedSlot].remark }}</div>
+                    </div>
+                </div>
+                <!-- 交换池显示在钱盒下方 -->
+                <div v-if="planExchangeMode" class="plan-pool-section">
+                    <div class="plan-pool-header">
+                        <span v-if="planExchangeResult.poolName">{{ planExchangeResult.poolName }}</span>
+                        <span v-else>点击上方钱盒选择要交换的通宝</span>
+                        <span v-if="planExchangeResult.upgradeInfo" class="plan-upgrade-badge" :class="planExchangeResult.upgradeInfo.type">
+                            {{ planExchangeResult.upgradeInfo.text }}
+                        </span>
+                    </div>
+                    <div v-if="planExchangeResult.cannotExchange" class="plan-cannot-exchange">
+                        {{ planExchangeResult.reason }}
+                    </div>
+                    <div v-else-if="planExchangeResult.possibleCoins" class="coin-list">
+                        <div v-for="coin in planExchangeResult.possibleCoins" :key="coin.id" class="coin-item-wrapper">
+                            <div class="coin-item" @click="confirmExchange(coin)" :title="coin.name + '\n' + coin.effect">
+                                <img :src="coin.image">
+                                <span v-if="getCoinMark(coin.name)" class="coin-mark" :class="'mark-' + getCoinMark(coin.name).type">
+                                    {{ getCoinMark(coin.name).text }}
+                                </span>
+                            </div>
+                            <div class="coin-item-label">
+                                <span class="type-tag" :class="'type-' + coin.type">{{ typeNames[coin.type] }}</span>{{ coin.name }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div v-if="!planExchangeMode" class="section">
+                <div class="section-title">通宝库</div>
+                <div class="category-tabs">
+                    <div v-for="cat in categories" :key="cat.id" class="category-tab"
+                         :class="{ active: selectedCategory === cat.id }"
+                         @click="selectedCategory = cat.id">{{ cat.name }}</div>
+                </div>
+                <div class="coin-list">
+                    <div v-for="coin in filteredCoins" :key="coin.id" class="coin-item-wrapper">
+                        <div class="coin-item"
+                             :class="{ 'coin-item-selected': previewCoin && previewCoin.id === coin.id, 'coin-item-pending': pendingCoin && pendingCoin.id === coin.id }"
+                             @click="handleCoinClick(coin)" :title="coin.name">
+                            <img :src="coin.image">
+                        </div>
+                        <div class="coin-item-label">
+                            <span class="type-tag" :class="'type-' + coin.type">{{ typeNames[coin.type] }}</span>{{ coin.name }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div v-if="previewCoin && !planExchangeMode" class="section coin-preview-section">
+                <div class="section-title">通宝详情</div>
+                <div class="coin-preview">
+                    <img class="coin-preview-img" :src="previewCoin.image">
+                    <div class="coin-preview-info">
+                        <div class="coin-preview-header">
+                            <span class="coin-preview-name">{{ previewCoin.name }}</span>
+                            <span class="coin-preview-type" :class="'type-' + previewCoin.type">{{ typeNames[previewCoin.type] }}</span>
+                        </div>
+                        <div class="coin-preview-effect">{{ previewCoin.effect }}</div>
+                        <div v-if="previewCoin.description" class="coin-preview-desc">{{ previewCoin.description }}</div>
+                        <div v-if="previewCoin.source" class="coin-preview-source">获取: {{ previewCoin.source }}</div>
+                        <div v-if="previewCoin.remark" class="coin-preview-remark">{{ previewCoin.remark }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

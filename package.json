@@ -1,0 +1,8 @@
+{
+  "name": "tongbao-calculator",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx live-server --port=3000"
+  }
+}

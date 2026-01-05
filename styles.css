@@ -653,80 +653,46 @@ body::before {
 }
 
 
-/* 移动端竖屏时强制横屏显示 */
-@media screen and (max-width: 768px) and (orientation: portrait) {
-    html {
-        transform: rotate(90deg);
-        transform-origin: left top;
-        width: 100vh;
-        height: 100vw;
-        overflow-x: hidden;
-        position: absolute;
-        top: 100%;
-        left: 0;
+/* 移动端单列布局 */
+@media screen and (max-width: 768px) {
+    html, body {
+        height: auto;
+        overflow: auto;
     }
-}
-
-/* 移动端横屏时的优化 */
-@media screen and (max-width: 1024px) and (orientation: landscape),
-       screen and (max-width: 768px) and (orientation: portrait) {
     .main-container {
-        padding: 8px 10px;
-        gap: 10px;
+        grid-template-columns: 1fr;
+        padding: 10px;
+        gap: 12px;
+        height: auto;
     }
     .panel {
-        padding: 10px;
+        padding: 12px;
+        overflow: visible;
+    }
+    .scroll-section {
+        overflow: visible;
     }
     .page-title {
-        font-size: 16px;
-        margin-bottom: 8px;
+        font-size: 18px;
+        margin-bottom: 10px;
     }
     .section {
-        margin-bottom: 6px;
-        padding: 8px;
+        margin-bottom: 8px;
+        padding: 10px;
     }
     .section-title {
-        font-size: 12px;
-        margin-bottom: 6px;
+        font-size: 13px;
     }
     .coin-slot {
-        width: 40px;
-        height: 40px;
+        width: 52px;
+        height: 52px;
     }
-    .coin-slot-label {
-        font-size: 8px;
-    }
-    .coin-item {
-        width: 32px;
-        height: 32px;
-    }
-    .coin-item-label {
-        font-size: 8px;
-    }
-    .mode-tab {
-        padding: 6px;
-        font-size: 11px;
-    }
-    .btn-primary, .plan-start-btn, .plan-end-btn {
-        padding: 8px 12px;
-        font-size: 12px;
-    }
-    .input-group label {
-        font-size: 11px;
-    }
-    input[type="number"], select {
-        padding: 4px 8px;
-        font-size: 12px;
+    .coin-list {
+        max-height: 300px;
     }
     .coinbox-stats {
-        font-size: 10px;
-    }
-    .draw-count-input {
-        width: 35px;
-        font-size: 10px;
-    }
-    .undo-btn, .redo-btn {
-        padding: 2px 6px;
-        font-size: 10px;
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-start;
     }
 }

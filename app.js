@@ -448,7 +448,7 @@ createApp({
                 
                 const result = {
                     coinName: '茧成绢',
-                    expectedValue: yuan.toFixed(2),
+                    expectedValue: '合计 ' + yuan.toFixed(2),
                     benefitUnit: '源石锭',
                     detail: `初始${baseYuanshiding.value} | 投掷${jcjThrowCount.value}次 | 投出花钱概率${(prob * 100).toFixed(1)}%`
                 };
@@ -513,26 +513,41 @@ createApp({
             }));
         });
         
-        // 计算投出3枚厉钱的概率
-        function get3LiProb() {
+        // 计算至少投出3枚厉钱的概率
+        function getAtLeast3LiProb() {
             const total = totalCoins.value;
-            if (total < 3 || liCount.value < 3) return 0;
-            return combination(liCount.value, 3) / combination(total, 3);
+            const draw = drawCount.value;
+            if (total < draw || liCount.value < 3) return 0;
+            
+            let prob = 0;
+            // 从3枚到最多draw枚厉钱
+            for (let i = 3; i <= Math.min(draw, liCount.value); i++) {
+                prob += combination(liCount.value, i) * combination(total - liCount.value, draw - i) / combination(total, draw);
+            }
+            return prob;
         }
         
-        // 计算投出3枚花钱的概率
-        function get3SpendProb() {
+        // 计算至少投出3枚花钱的概率
+        function getAtLeast3SpendProb() {
             const total = totalCoins.value;
-            if (total < 3 || spendCount.value < 3) return 0;
-            return combination(spendCount.value, 3) / combination(total, 3);
+            const draw = drawCount.value;
+            if (total < draw || spendCount.value < 3) return 0;
+            
+            let prob = 0;
+            // 从3枚到最多draw枚花钱
+            for (let i = 3; i <= Math.min(draw, spendCount.value); i++) {
+                prob += combination(spendCount.value, i) * combination(total - spendCount.value, draw - i) / combination(total, draw);
+            }
+            return prob;
         }
         
-        // 异食兽像计算：投出3枚厉钱时，获得3点生命上限+3点护盾
+        // 异食兽像计算：至少投出3枚厉钱时，获得3点生命上限+3点护盾
         function calculateYishishou() {
             const total = totalCoins.value;
-            if (total < 3) return;
+            const draw = drawCount.value;
+            if (total < draw) return;
             
-            const prob = get3LiProb();
+            const prob = getAtLeast3LiProb();
             const expectedHP = relicThrowCount.value * prob * 3;
             const expectedShield = relicThrowCount.value * prob * 3;
             
@@ -540,19 +555,20 @@ createApp({
                 coinName: '异食兽像',
                 expectedValue: `${expectedHP.toFixed(2)}生命上限 + ${expectedShield.toFixed(2)}护盾`,
                 benefitUnit: '',
-                detail: `投钱${relicThrowCount.value}次 | 投出3厉概率: ${(prob * 100).toFixed(2)}%`
+                detail: `投钱${relicThrowCount.value}次 | 至少3厉概率: ${(prob * 100).toFixed(2)}%`
             };
             expectResult.value = result;
             expectHistory.value.unshift(result);
             if (expectHistory.value.length > 5) expectHistory.value.pop();
         }
         
-        // 吉运有三计算：投出3枚花钱时，获得8源石锭+1希望
+        // 吉运有三计算：至少投出3枚花钱时，获得8源石锭+1希望
         function calculateJiyunyousan() {
             const total = totalCoins.value;
-            if (total < 3) return;
+            const draw = drawCount.value;
+            if (total < draw) return;
             
-            const prob = get3SpendProb();
+            const prob = getAtLeast3SpendProb();
             const expectedYuan = relicThrowCount.value * prob * 8;
             const expectedHope = relicThrowCount.value * prob * 1;
             
@@ -560,7 +576,7 @@ createApp({
                 coinName: '吉运有三',
                 expectedValue: `${expectedYuan.toFixed(2)}源石锭 + ${expectedHope.toFixed(2)}希望`,
                 benefitUnit: '',
-                detail: `投钱${relicThrowCount.value}次 | 投出3花概率: ${(prob * 100).toFixed(2)}%`
+                detail: `投钱${relicThrowCount.value}次 | 至少3花概率: ${(prob * 100).toFixed(2)}%`
             };
             expectResult.value = result;
             expectHistory.value.unshift(result);

@@ -642,7 +642,7 @@
                         <div v-if="calculableRelics.length === 0" class="empty-state">暂无支持计算的藏品</div>
                         <!-- 异食兽像计算 -->
                         <template v-if="expectRelicTarget === 'rogue_5_relic_speg_2'">
-                            <div class="expect-desc">投出3枚厉钱时，获得3点生命上限+3点护盾</div>
+                            <div class="expect-desc">至少投出3枚厉钱时，获得3点生命上限+3点护盾</div>
                             <div class="input-group">
                                 <label>投钱次数</label>
                                 <input type="number" v-model.number="relicThrowCount" min="1" max="100">
@@ -651,7 +651,7 @@
                         </template>
                         <!-- 吉运有三计算 -->
                         <template v-if="expectRelicTarget === 'rogue_5_relic_speg_3'">
-                            <div class="expect-desc">投出3枚花钱时，获得8源石锭+1希望</div>
+                            <div class="expect-desc">至少投出3枚花钱时，获得8源石锭+1希望</div>
                             <div class="input-group">
                                 <label>投钱次数</label>
                                 <input type="number" v-model.number="relicThrowCount" min="1" max="100">

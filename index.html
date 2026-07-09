@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>界园游龙小助手</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@400;500&family=Crimson+Text:wght@400;600&display=swap" rel="stylesheet">
+    <script src="/vue.min.js"></script>
+    <!-- 系统字体，无需加载 Google Fonts -->
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -58,6 +58,18 @@
             text-align: center;
             letter-spacing: 0.1em;
             margin-bottom: 12px;
+            position: relative;
+        }
+        .admin-link {
+            font-size: 16px;
+            color: #999;
+            text-decoration: none;
+            margin-left: 8px;
+            vertical-align: middle;
+            transition: color 0.2s;
+        }
+        .admin-link:hover {
+            color: var(--accent-gold);
         }
         .mode-tabs {
             display: flex;
@@ -145,7 +157,7 @@
             font-size: 10px;
             color: var(--text-body);
             text-align: center;
-            max-width: 70px;
+            max-width: 90px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -458,7 +470,7 @@
 <div id="app">
     <div class="main-container">
         <div class="panel">
-            <h1 class="page-title">界园游龙小助手</h1>
+            <h1 class="page-title">界园游龙小助手<a href="admin.html" class="admin-link" title="管理后台">⚙</a></h1>
             <div class="section">
                 <div class="section-title">当前钱盒配置</div>
                 <div class="box-coins">
@@ -478,48 +490,44 @@
                 <div class="mode-tab" :class="{ active: mode === 'judge', disabled: planExchangeMode }" @click="!planExchangeMode && (mode = 'judge')">判定</div>
                 <div class="mode-tab" :class="{ active: mode === 'plan' }" @click="mode = 'plan'">筹谋</div>
                 <div class="mode-tab" :class="{ active: mode === 'expect', disabled: planExchangeMode }" @click="!planExchangeMode && (mode = 'expect')">期望</div>
+                <div class="mode-tab" :class="{ active: mode === 'patina' }" @click="mode = 'patina'">品相</div>
             </div>
             <div class="scroll-section">
                 <div v-if="mode === 'judge'" class="section">
-                    <div class="section-title">概率计算</div>
-                    <div class="input-group">
-                        <label>目标通宝类型</label>
-                        <select v-model="coinType">
-                            <option value="spend">花钱</option>
-                            <option value="li">厉钱</option>
-                            <option value="heng">衡钱</option>
-                        </select>
+                    <div class="section-title">判定</div>
+                    <div class="judge-tabs">
+                        <div class="judge-tab" :class="{ active: judgeMode === 'throw' }" @click="judgeMode = 'throw'">投钱判定</div>
+                        <div class="judge-tab" :class="{ active: judgeMode === 'combo' }" @click="judgeMode = 'combo'">指定组合</div>
                     </div>
-                    <div class="input-group">
-                        <label>计算条件</label>
-                        <select v-model="condition">
-                            <option value="atleast">至少</option>
-                            <option value="exact">固定数量</option>
-                            <option value="combo">指定组合</option>
-                        </select>
-                    </div>
-                    <div v-if="condition !== 'combo'" class="input-group">
-                        <label>目标数量（1-{{ drawCount }}）</label>
-                        <input type="number" v-model.number="targetCount" min="1" :max="drawCount">
-                    </div>
-                    <div v-if="condition === 'combo'" class="combo-inputs">
-                        <div class="combo-row">
-                            <div class="combo-item">
-                                <label>花钱</label>
-                                <input type="number" v-model.number="comboSpend" min="0" max="3">
-                            </div>
-                            <div class="combo-item">
-                                <label>厉钱</label>
-                                <input type="number" v-model.number="comboLi" min="0" max="3">
-                            </div>
-                            <div class="combo-item">
-                                <label>衡钱</label>
-                                <input type="number" v-model.number="comboHeng" min="0" max="3">
-                            </div>
+                    
+                    <!-- 投钱判定模式 -->
+                    <template v-if="judgeMode === 'throw'">
+                        <div class="input-group">
+                            <label>目标通宝类型</label>
+                            <select v-model="coinType">
+                                <option value="spend">花钱</option>
+                                <option value="li">厉钱</option>
+                                <option value="heng">衡钱</option>
+                            </select>
                         </div>
-                        <div class="combo-hint">总数必须为{{ drawCount }}</div>
-                    </div>
-                    <button class="btn-primary" @click="calculateProbability">计算概率</button>
+                        <div class="input-group">
+                            <label>计算条件</label>
+                            <select v-model="condition">
+                                <option value="atleast">至少</option>
+                                <option value="exact">固定数量</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>目标数量（1-{{ drawCount }}）</label>
+                            <input type="number" v-model.number="targetCount" min="1" :max="drawCount">
+                        </div>
+                        <button class="btn-primary" @click="calculateProbability">计算概率</button>
+                    </template>
+                    
+                    <!-- 指定组合模式 -->
+                    <template v-if="judgeMode === 'combo'">
+                        <div class="combo-desc">在右侧钱盒下方点击"指定"或"排除"按钮开始选取</div>
+                    </template>
                 </div>
                 <template v-if="mode === 'judge'">
                     <div class="section">
@@ -681,6 +689,16 @@
                         </div>
                     </div>
                 </template>
+                <div v-if="mode === 'patina'" class="section">
+                    <div class="section-title">品相附着</div>
+                    <div v-if="!patinaMode" class="patina-rules">
+                        <button class="plan-start-btn" @click="startPatinaMode">开始附着</button>
+                    </div>
+                    <div v-else class="patina-exchange-info">
+                        <div class="patina-exchange-status">品相附着中...</div>
+                        <button class="plan-end-btn" @click="endPatinaMode">结束附着</button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="panel right-panel">
@@ -697,18 +715,65 @@
                     <div v-for="(row, rowIdx) in coinBoxRows" :key="'row'+rowIdx" class="coin-row">
                         <div v-for="(coin, colIdx) in row.coins" :key="'slot'+row.startIdx+colIdx" class="coin-slot-wrapper">
                             <div class="coin-slot" 
-                                 :class="{ selected: selectedSlot === row.startIdx + colIdx }"
-                                 @click="selectSlot(row.startIdx + colIdx)">
+                                 :class="{ selected: selectedSlot === row.startIdx + colIdx, 'patina-selected': patinaMode && patinaSelectedSlot === row.startIdx + colIdx }"
+                                 @click="patinaMode ? selectCoinForPatina(row.startIdx + colIdx) : selectSlot(row.startIdx + colIdx)">
                                 <img v-if="coin" :src="coin.image" :title="coin.name">
                                 <span v-if="planExchangeMode && coin && getCoinMark(coin.name)" 
                                       class="coin-mark" :class="'mark-' + getCoinMark(coin.name).type">
                                     {{ getCoinMark(coin.name).text }}
                                 </span>
                             </div>
+                            <span v-if="coin && getPatinaForSlot(row.startIdx + colIdx)" 
+                                  class="patina-mark">
+                                <img :src="patinasConfig[getPatinaForSlot(row.startIdx + colIdx)].icon" 
+                                     :title="patinasConfig[getPatinaForSlot(row.startIdx + colIdx)].name">
+                            </span>
                             <div v-if="coin" class="coin-slot-label">
                                 <span class="type-tag" :class="'type-' + coin.type">{{ typeNames[coin.type] }}</span>{{ coin.name }}
                             </div>
                         </div>
+                    </div>
+                </div>
+                <div class="xiaoba-checkbox">
+                    <img src="界园藏品/299_AgAANH6B7oG_pVHvel5IzKj8QnVLXHIe.png" class="xiaoba-icon" title="小八界">
+                    <label>
+                        <input type="checkbox" v-model="enableXiaoba">
+                        <span>小八界（投钱+15%概率额外投出1枚）</span>
+                    </label>
+                </div>
+                <!-- 指定/排除组合按钮 -->
+                <div v-if="mode === 'judge' && judgeMode === 'combo' && !comboSelectMode" class="combo-action-btns">
+                    <button class="combo-action-btn include-btn" @click="startComboSelect('include')">指定</button>
+                    <button class="combo-action-btn exclude-btn" @click="startComboSelect('exclude')">排除</button>
+                </div>
+                <!-- 指定/排除组合选取界面 -->
+                <div v-if="mode === 'judge' && judgeMode === 'combo' && comboSelectMode" class="combo-select-panel">
+                    <div class="combo-select-header">
+                        <span v-if="comboMode === 'include'">选择期望投出的通宝</span>
+                        <span v-else>选择不希望投出的通宝</span>
+                        <button class="combo-select-close" @click="cancelComboSelect">×</button>
+                    </div>
+                    <div class="combo-selected-coins">
+                        <div v-if="selectedComboCoins.length === 0" class="empty-state">未选择任何通宝</div>
+                        <div v-for="(coin, idx) in selectedComboCoins" :key="idx" class="combo-selected-item">
+                            <img :src="coin.image" :title="coin.name">
+                            <span class="combo-selected-name">{{ coin.name }}</span>
+                            <button class="combo-remove-btn" @click="removeFromCombo(idx)">×</button>
+                        </div>
+                    </div>
+                    <div class="combo-info">
+                        <span v-if="comboMode === 'include'">已选: {{ selectedComboCoins.length }} / {{ drawCount }}</span>
+                        <span v-else>已排除: {{ selectedComboCoins.length }} 个</span>
+                    </div>
+                    <div v-if="comboMode === 'include'" class="combo-options">
+                        <label>
+                            <input type="checkbox" v-model="comboAllowPartial">
+                            <span>允许部分指定（剩余随意）</span>
+                        </label>
+                    </div>
+                    <div class="combo-select-actions">
+                        <button class="btn-primary" @click="calculateComboProbability">计算概率</button>
+                        <button class="btn-danger" @click="cancelComboSelect">取消</button>
                     </div>
                 </div>
                 <div v-if="selectedSlot !== null && coinBox[selectedSlot] && !planExchangeMode" class="coin-detail">
@@ -745,8 +810,28 @@
                         </div>
                     </div>
                 </div>
+                <!-- 品相显示在钱盒下方 -->
+                <div v-if="patinaMode" class="patina-pool-section">
+                    <div class="patina-pool-header">
+                        <span v-if="patinaSelectedSlot !== null && coinBox[patinaSelectedSlot]">
+                            {{ coinBox[patinaSelectedSlot].name }} - 选择品相
+                        </span>
+                        <span v-else>点击上方钱盒选择要附着品相的通宝</span>
+                    </div>
+                    <div v-if="patinaSelectedSlot !== null" class="patina-list">
+                        <div v-for="(patina, key) in patinasConfig" :key="key" class="patina-item-compact" @click="selectPatina(key)">
+                            <img :src="patina.icon" :title="patina.name" class="patina-item-compact-icon">
+                            <div class="patina-item-compact-name">{{ patina.name }}</div>
+                        </div>
+                    </div>
+                    <div v-if="patinaSelectedPatina && patinasConfig[patinaSelectedPatina]" class="patina-detail-section">
+                        <div class="patina-detail-header">{{ patinasConfig[patinaSelectedPatina].name }}</div>
+                        <div class="patina-detail-desc">{{ patinasConfig[patinaSelectedPatina].desc }}</div>
+                        <button class="btn-primary" @click="applyPatina(patinaSelectedPatina)">确认附着</button>
+                    </div>
+                </div>
             </div>
-            <div v-if="!planExchangeMode" class="section">
+            <div v-if="!planExchangeMode && !patinaMode" class="section">
                 <div class="section-title">通宝库</div>
                 <div class="category-tabs">
                     <div v-for="cat in categories" :key="cat.id" class="category-tab"
@@ -757,7 +842,7 @@
                     <div v-for="coin in filteredCoins" :key="coin.id" class="coin-item-wrapper">
                         <div class="coin-item"
                              :class="{ 'coin-item-selected': previewCoin && previewCoin.id === coin.id, 'coin-item-pending': pendingCoin && pendingCoin.id === coin.id }"
-                             @click="handleCoinClick(coin)" :title="coin.name">
+                             @click="mode === 'judge' && judgeMode === 'combo' ? addToComboCoin(coin) : handleCoinClick(coin)" :title="coin.name">
                             <img :src="coin.image">
                         </div>
                         <div class="coin-item-label">
@@ -766,7 +851,7 @@
                     </div>
                 </div>
             </div>
-            <div v-if="previewCoin && !planExchangeMode" class="section coin-preview-section">
+            <div v-if="previewCoin && !planExchangeMode && !patinaMode" class="section coin-preview-section">
                 <div class="section-title">通宝详情</div>
                 <div class="coin-preview">
                     <img class="coin-preview-img" :src="previewCoin.image">

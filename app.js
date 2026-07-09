@@ -1,53 +1,52 @@
 const { createApp, ref, computed, watch, onMounted } = Vue;
 
+// Supabase 配置
+const SUPABASE_URL = 'https://vsxzzxqwnipgwumhlczd.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_UvLloV7W1DEyhBDu8mMMRw_oeuSp8e0';
+
+const STORAGE_BASE = `${SUPABASE_URL}/storage/v1/object/public/tongbao-images`;
+
 // 类型映射
 const typeMap = { '花': 'spend', '厉': 'li', '衡': 'heng' };
 const typeNames = { spend: '花', li: '厉', heng: '衡' };
-const categoryMap = {
-    '随盒赠钱': 'suihe',
-    '待铸子钱': 'daizhu',
-    '富贵商钱': 'fugui',
-    '砺武兵钱': 'liwu',
-    '天师奇钱': 'tianshi'
-};
+
+// 旧分类英文名映射（用于图片路径）
 const categoryFolderMap = {
-    'suihe': '随盒赠钱',
-    'daizhu': '待铸子钱',
-    'fugui': '富贵商钱',
-    'liwu': '砺武兵钱',
-    'tianshi': '天师奇钱'
+    'suihe': 'suihe', 'daizhu': 'daizhu', 'fugui': 'fugui',
+    'liwu': 'liwu', 'tianshi': 'tianshi'
 };
 
-// 解析CSV
-function parseCSV(csvText) {
-    const lines = csvText.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.trim());
-    const coins = [];
-    
-    for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-        const values = lines[i].split(',');
-        const coin = {};
-        headers.forEach((h, idx) => coin[h] = (values[idx] || '').trim());
-        
-        // 转换为应用需要的格式
-        const category = categoryMap[coin['分类']] || 'suihe';
-        const folder = coin['分类'] || '随盒赠钱';
-        coins.push({
-            id: coin['文件'],
-            name: coin['名称'],
-            type: typeMap[coin['类型']] || 'heng',
-            effect: coin['效果'],
-            description: coin['描述'],
-            source: coin['获取方式'],
-            remark: coin['备注'],
-            category: category,
-            image: encodeURI(`界园通宝/${folder}/${coin['文件']}.png`),
-            benefit: coin['收益类型'] === '1' ? parseInt(coin['价值']) || 0 : 0,
-            benefitUnit: coin['收益类型'] === '1' ? '生命上限' : ''
-        });
-    }
-    return coins;
+// 品相配置（图标使用 Supabase 英文路径）
+const PATINA_URL_BASE = `${STORAGE_BASE}/pinxiang`;
+const patinasConfig = {
+    'rust': { name: '锈色', desc: '投出时，每经过一个节点，获得源石锭+1', icon: `${PATINA_URL_BASE}/patina_rust.png` },
+    'protect': { name: '存护', desc: '加入钱盒时，获得护盾值+2', icon: `${PATINA_URL_BASE}/patina_protect.png` },
+    'illusion': { name: '入幻', desc: '加入钱盒时，获得希望+1', icon: `${PATINA_URL_BASE}/patina_illusion.png` },
+    'light': { name: '引光', desc: '加入钱盒时，获得烛火+1（岁兽残识外叠加至下次进入）', icon: `${PATINA_URL_BASE}/patina_light.png` },
+    'tour': { name: '巡游', desc: '投出时，每完成一场战斗，获得票券+1', icon: `${PATINA_URL_BASE}/patina_tour.png` },
+    'harmony': { name: '相合', desc: '同时被视为花钱、衡钱、厉钱', icon: `${PATINA_URL_BASE}/patina_harmony.png` },
+    'mutable': { name: '易变', desc: '通宝回到钱盒时，变化为随机通宝', icon: `${PATINA_URL_BASE}/patina_mutable.png` },
+    'mutableSpend': { name: '易花', desc: '通宝回到钱盒时，变化为随机花钱', icon: `${PATINA_URL_BASE}/patina_mutable_spend.png` },
+    'mutableLi': { name: '易厉', desc: '通宝回到钱盒时，变化为随机厉钱', icon: `${PATINA_URL_BASE}/patina_mutable_li.png` },
+    'drawn': { name: '受引', desc: '通宝有概率被额外投出（自身未被投出时，30%概率判定成功后投出自身）', icon: `${PATINA_URL_BASE}/patina_drawn.png` }
+};
+
+// 将 Supabase 数据转换为应用格式
+function convertDBRow(row) {
+    const typeKey = typeMap[row.type] || 'heng';
+    return {
+        id: row.file_name,
+        name: row.name,
+        type: typeKey,
+        effect: row.effect,
+        description: row.description,
+        source: row.source,
+        remark: row.remark,
+        category: row.category,
+        image: row.image_url,
+        benefit: row.benefit_type === '1' ? (row.value || 0) : 0,
+        benefitUnit: row.benefit_type === '1' ? '生命上限' : ''
+    };
 }
 
 
@@ -56,15 +55,21 @@ createApp({
         const mode = ref('judge');
         const loading = ref(true);
         
-        // 通宝分类
+        // 品相模式相关
+        const patinaMode = ref(false);
+        const patinaSelectedSlot = ref(null);
+        const patinaSelectedPatina = ref(null);
+        
+        // 钱盒中通宝的品相映射 { slotIndex: 'patina_key' }
+        const coinPatinas = ref({});
+        
+        // 通宝分类（按类型：厉、花、衡）
         const categories = [
-            { id: 'suihe', name: '随盒赠钱' },
-            { id: 'daizhu', name: '待铸子钱' },
-            { id: 'fugui', name: '富贵商钱' },
-            { id: 'liwu', name: '砺武兵钱' },
-            { id: 'tianshi', name: '天师奇钱' }
+            { id: 'li', name: '厉钱' },
+            { id: 'spend', name: '花钱' },
+            { id: 'heng', name: '衡钱' }
         ];
-        const selectedCategory = ref('suihe');
+        const selectedCategory = ref('spend');
         
         // 所有通宝数据（从CSV加载）
         const allCoins = ref([]);
@@ -74,6 +79,7 @@ createApp({
         const drawCount = ref(3); // 每次投钱数量，默认3
         const coinBox = ref([]);
         const selectedSlot = ref(null);
+        const enableXiaoba = ref(false); // 小八界开关
         
         // 撤销/还原历史
         const coinBoxHistory = ref([]);
@@ -108,25 +114,76 @@ createApp({
         // 通宝预览
         const previewCoin = ref(null);
         
-        // 加载CSV数据
+        // 从 Supabase 加载通宝数据
         async function loadCoinsData() {
             try {
-                const response = await fetch(encodeURI('通宝数据.csv'));
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                const csvText = await response.text();
-                console.log('CSV loaded, lines:', csvText.split('\n').length);
-                allCoins.value = parseCSV(csvText);
-                console.log('Parsed coins:', allCoins.value.length);
-                // 初始化钱盒为随盒赠钱
-                const initCoins = allCoins.value.filter(c => c.category === 'suihe');
-                coinBox.value = initCoins.slice(0, coinBoxCapacity.value);
+                const r = await fetch(`${SUPABASE_URL}/rest/v1/tongbao?select=*&order=file_name.asc`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!r.ok) throw new Error(await r.text());
+                const data = await r.json();
+                allCoins.value = data.map(convertDBRow);
+                console.log(`从 Supabase 加载了 ${allCoins.value.length} 个通宝`);
+                
+                // 初始钱盒填充通宝
+                coinBox.value = allCoins.value.slice(0, coinBoxCapacity.value);
                 loading.value = false;
             } catch (error) {
-                console.error('加载通宝数据失败:', error);
-                loading.value = false;
+                console.error('从 Supabase 加载失败，尝试本地 CSV...', error);
+                await loadFromLocalCSV();
             }
+        }
+        
+        // 本地 CSV 兜底
+        async function loadFromLocalCSV() {
+            try {
+                const response = await fetch('通宝数据.csv');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const csvText = await response.text();
+                const coins = parseLocalCSV(csvText);
+                allCoins.value = coins;
+                coinBox.value = coins.slice(0, coinBoxCapacity.value);
+                console.log(`从本地 CSV 加载了 ${coins.length} 个通宝（兜底）`);
+            } catch (e) {
+                console.error('本地 CSV 也加载失败:', e);
+            }
+            loading.value = false;
+        }
+        
+        function parseLocalCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const coins = [];
+            const catMap = { '随盒赠钱': 'suihe', '待铸子钱': 'daizhu', '富贵商钱': 'fugui', '砺武兵钱': 'liwu', '天师奇钱': 'tianshi' };
+            const catEng = { 'suihe': 'suihe', 'daizhu': 'daizhu', 'fugui': 'fugui', 'liwu': 'liwu', 'tianshi': 'tianshi' };
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const values = lines[i].split(',');
+                const row = {};
+                headers.forEach((h, idx) => row[h] = (values[idx] || '').trim());
+                if (!row['名称'] || !row['文件']) continue;
+                
+                const folder = row['分类'] || '随盒赠钱';
+                const engFolder = catEng[catMap[folder]] || 'suihe';
+                coins.push({
+                    id: row['文件'],
+                    name: row['名称'],
+                    type: typeMap[row['类型']] || 'heng',
+                    effect: row['效果'],
+                    description: row['描述'],
+                    source: row['获取方式'],
+                    remark: row['备注'],
+                    category: catMap[folder] || 'suihe',
+                    image: encodeURI(`界园通宝/${folder}/${row['文件']}.png`),
+                    benefit: row['收益类型'] === '1' ? parseInt(row['价值']) || 0 : 0,
+                    benefitUnit: row['收益类型'] === '1' ? '生命上限' : ''
+                });
+            }
+            return coins;
         }
         
         // 获取大炎通宝对象
@@ -158,9 +215,9 @@ createApp({
             loadCoinsData();
         });
         
-        // 筛选通宝
+        // 筛选通宝（按类型厉/花/衡）
         const filteredCoins = computed(() => {
-            return allCoins.value.filter(c => c.category === selectedCategory.value);
+            return allCoins.value.filter(c => c.type === selectedCategory.value);
         });
         
         // 可计算期望的通宝
@@ -221,10 +278,18 @@ createApp({
             selectedSlot.value = selectedSlot.value === idx ? null : idx;
         }
         
+        // 可重复添加的通宝ID（原随盒赠钱及圣诏封神）
+        const allowDuplicateIds = [
+            'rogue_5_copper_B_01', 'rogue_5_copper_B_02', 'rogue_5_copper_B_03',
+            'rogue_5_copper_B_04', 'rogue_5_copper_B_05', 'rogue_5_copper_B_06',
+            'rogue_5_copper_B_07', 'rogue_5_copper_B_08', 'rogue_5_copper_B_09',
+            'rogue_5_copper_B_10', 'rogue_5_copper_S_4'
+        ];
+        
         // 检查通宝是否可以添加到钱盒（重复限制）
         function canAddCoin(coin, targetSlotIndex) {
             // 随盒赠钱和圣诏封神可以重复
-            if (coin.category === 'suihe' || coin.id === 'rogue_5_copper_S_4') {
+            if (allowDuplicateIds.includes(coin.id)) {
                 return true;
             }
             
@@ -282,13 +347,21 @@ createApp({
         }
 
         // 判定模式
+        const judgeMode = ref('throw'); // 'throw' 或 'combo'
         const coinType = ref('spend');
         const condition = ref('atleast');
         const targetCount = ref(1);
         const currentResult = ref(null);
         const history = ref([]);
         
-        // 指定组合
+        // 指定组合模式
+        const selectedComboCoins = ref([]); // 选中的通宝列表
+        const comboMode = ref('include'); // 'include' 或 'exclude'
+        const comboSelectMode = ref(false); // 是否进入选取模式
+        const comboAllowPartial = ref(true); // 允许部分指定
+        const comboExcludeMode = ref(false); // 排除模式（保留兼容性）
+        
+        // 旧的指定组合（保留兼容性）
         const comboSpend = ref(1);
         const comboLi = ref(1);
         const comboHeng = ref(1);
@@ -304,62 +377,240 @@ createApp({
             return result;
         }
         
-        // 计算概率
-        function calculateProbability() {
+        // 开始指定/排除组合选取
+        function startComboSelect(mode) {
+            comboMode.value = mode;
+            comboSelectMode.value = true;
+            selectedComboCoins.value = [];
+            comboAllowPartial.value = true;
+        }
+        
+        // 取消组合选取
+        function cancelComboSelect() {
+            comboSelectMode.value = false;
+            selectedComboCoins.value = [];
+        }
+        
+        // 从右侧钱盒添加通宝到指定组合
+        function addToComboCoin(coin) {
+            if (selectedComboCoins.value.length < drawCount.value) {
+                selectedComboCoins.value.push(coin);
+            }
+        }
+        
+        // 从指定组合移除通宝
+        function removeFromCombo(idx) {
+            selectedComboCoins.value.splice(idx, 1);
+        }
+        
+        // 计算指定组合的概率
+        function calculateComboProbability() {
             const total = totalCoins.value;
-            const draw = drawCount.value;
+            let draw = drawCount.value;
+            
+            // 计算钱盒中有多少通宝附着了受引品相
+            let drawnCoinCount = 0;
+            for (let i = 0; i < coinBox.value.length; i++) {
+                if (coinPatinas.value[i] === 'drawn') {
+                    drawnCoinCount++;
+                }
+            }
+            
             if (total < draw) return;
             
             let probability = 0;
             let description = '';
             
-            if (condition.value === 'combo') {
-                // 指定组合模式
-                const s = comboSpend.value;
-                const l = comboLi.value;
-                const h = comboHeng.value;
+            if (comboMode.value === 'exclude') {
+                // 排除模式：计算不投出指定通宝的概率
+                const excludedCoins = selectedComboCoins.value;
+                const excludedCount = excludedCoins.length;
+                const availableCoins = total - excludedCount;
                 
-                if (s + l + h !== draw) {
-                    alert(`组合总数必须为${draw}`);
+                if (availableCoins < draw) {
+                    probability = 0;
+                    description = '可用通宝不足';
+                } else {
+                    probability = combination(availableCoins, draw) / combination(total, draw);
+                    const excludedNames = excludedCoins.map(c => c.name).join('、');
+                    description = `不投出${excludedNames}`;
+                }
+            } else if (comboMode.value === 'include') {
+                // 指定模式
+                if (comboAllowPartial.value && selectedComboCoins.value.length < draw) {
+                    // 部分指定模式：指定的通宝必须投出，剩余随意
+                    const specifiedCoins = selectedComboCoins.value;
+                    const specifiedCount = specifiedCoins.length;
+                    const remainingSlots = draw - specifiedCount;
+                    const remainingCoins = total - specifiedCount;
+                    
+                    if (remainingCoins < remainingSlots) {
+                        probability = 0;
+                        description = '可用通宝不足';
+                    } else {
+                        // 计算指定通宝都被投出的概率
+                        let prob = 1;
+                        for (let i = 0; i < specifiedCount; i++) {
+                            prob *= (total - i - 1) / (draw - i);
+                        }
+                        probability = prob;
+                        const specifiedNames = specifiedCoins.map(c => c.name).join('、');
+                        description = `投出${specifiedNames}（剩余${remainingSlots}个随意）`;
+                    }
+                } else if (selectedComboCoins.value.length === draw) {
+                    // 完全指定模式：投出指定的通宝组合
+                    const specifiedCoins = selectedComboCoins.value;
+                    
+                    // 计算投出这个特定组合的概率
+                    let prob = 1;
+                    for (let i = 0; i < draw; i++) {
+                        prob *= 1 / total;
+                    }
+                    probability = prob;
+                    
+                    const specifiedNames = specifiedCoins.map(c => c.name).join('、');
+                    description = `投出${specifiedNames}`;
+                } else {
+                    alert('请选择足够的通宝或启用部分指定模式');
                     return;
                 }
+            }
+            
+            // 应用额外投出规则（小八界和受引品相）
+            if (enableXiaoba.value || drawnCoinCount > 0) {
+                let extraChance = 0;
                 
-                if (s > spendCount.value || l > liCount.value || h > hengCount.value) {
-                    probability = 0;
-                } else {
-                    probability = combination(spendCount.value, s) * 
-                                 combination(liCount.value, l) * 
-                                 combination(hengCount.value, h) / 
+                if (enableXiaoba.value) {
+                    extraChance += 0.15;
+                }
+                if (drawnCoinCount > 0) {
+                    const undrawnDrawnCoins = drawnCoinCount * 0.5;
+                    extraChance += undrawnDrawnCoins * 0.3 / draw;
+                }
+                
+                extraChance = Math.min(extraChance, 1);
+                
+                let baseProbability = probability * (1 - extraChance);
+                let extraProbability = 0;
+                
+                // 额外投出1枚的概率（简化计算）
+                const extraDraw = draw + 1;
+                if (total >= extraDraw) {
+                    extraProbability = probability * 0.5; // 简化估计
+                }
+                
+                probability = baseProbability + extraProbability * extraChance;
+                
+                const modifiers = [];
+                if (enableXiaoba.value) modifiers.push('小八界');
+                if (drawnCoinCount > 0) modifiers.push(`受引×${drawnCoinCount}`);
+                if (modifiers.length > 0) {
+                    description += `（${modifiers.join('+')}）`;
+                }
+            }
+            
+            const result = {
+                description,
+                probability,
+                spendCount: spendCount.value,
+                liCount: liCount.value,
+                hengCount: hengCount.value
+            };
+            currentResult.value = result;
+            history.value.unshift(result);
+            if (history.value.length > 3) history.value.pop();
+        }
+        
+        // 计算概率
+        function calculateProbability() {
+            const total = totalCoins.value;
+            let draw = drawCount.value;
+            
+            // 计算钱盒中有多少通宝附着了受引品相
+            let drawnCoinCount = 0;
+            for (let i = 0; i < coinBox.value.length; i++) {
+                if (coinPatinas.value[i] === 'drawn') {
+                    drawnCoinCount++;
+                }
+            }
+            
+            if (total < draw) return;
+            
+            let probability = 0;
+            let description = '';
+            
+            let targetCoinCount;
+            switch (coinType.value) {
+                case 'spend': targetCoinCount = spendCount.value; break;
+                case 'li': targetCoinCount = liCount.value; break;
+                case 'heng': targetCoinCount = hengCount.value; break;
+            }
+            
+            if (condition.value === 'exact') {
+                if (targetCount.value <= targetCoinCount && targetCount.value <= draw) {
+                    probability = combination(targetCoinCount, targetCount.value) * 
+                                 combination(total - targetCoinCount, draw - targetCount.value) / 
                                  combination(total, draw);
                 }
-                
-                const parts = [];
-                if (s > 0) parts.push(`花${s}`);
-                if (l > 0) parts.push(`厉${l}`);
-                if (h > 0) parts.push(`衡${h}`);
-                description = `投出${parts.join('+')}`;
+                description = `${coinTypes[coinType.value]}恰好${targetCount.value}个`;
             } else {
-                let targetCoinCount;
-                switch (coinType.value) {
-                    case 'spend': targetCoinCount = spendCount.value; break;
-                    case 'li': targetCoinCount = liCount.value; break;
-                    case 'heng': targetCoinCount = hengCount.value; break;
+                for (let i = targetCount.value; i <= Math.min(draw, targetCoinCount); i++) {
+                    probability += combination(targetCoinCount, i) * 
+                                  combination(total - targetCoinCount, draw - i) / 
+                                  combination(total, draw);
+                }
+                description = `${coinTypes[coinType.value]}至少${targetCount.value}个`;
+            }
+            
+            // 应用额外投出规则（小八界和受引品相）
+            if (enableXiaoba.value || drawnCoinCount > 0) {
+                
+                let baseProbability = probability;
+                let extraProbability = 0;
+                let extraChance = 0;
+                
+                // 计算额外投出的概率
+                if (enableXiaoba.value) {
+                    extraChance += 0.15; // 小八界15%
+                }
+                if (drawnCoinCount > 0) {
+                    // 受引：未被投出的受引通宝有30%概率额外投出
+                    // 简化计算：假设平均有drawnCoinCount/2个未被投出
+                    const undrawnDrawnCoins = drawnCoinCount * 0.5;
+                    extraChance += undrawnDrawnCoins * 0.3 / draw; // 平均每枚通宝的额外投出概率
                 }
                 
-                if (condition.value === 'exact') {
-                    if (targetCount.value <= targetCoinCount && targetCount.value <= draw) {
-                        probability = combination(targetCoinCount, targetCount.value) * 
-                                     combination(total - targetCoinCount, draw - targetCount.value) / 
-                                     combination(total, draw);
+                // 限制extraChance不超过1
+                extraChance = Math.min(extraChance, 1);
+                
+                // 基础概率（不额外投出）
+                baseProbability = probability * (1 - extraChance);
+                
+                // 额外投出1枚的概率
+                const extraDraw = draw + 1;
+                if (total >= extraDraw) {
+                    if (condition.value === 'exact') {
+                        if (targetCount.value <= targetCoinCount && targetCount.value <= extraDraw) {
+                            extraProbability = combination(targetCoinCount, targetCount.value) * 
+                                             combination(total - targetCoinCount, extraDraw - targetCount.value) / 
+                                             combination(total, extraDraw);
+                        }
+                    } else {
+                        for (let i = targetCount.value; i <= Math.min(extraDraw, targetCoinCount); i++) {
+                            extraProbability += combination(targetCoinCount, i) * 
+                                              combination(total - targetCoinCount, extraDraw - i) / 
+                                              combination(total, extraDraw);
+                        }
                     }
-                    description = `${coinTypes[coinType.value]}恰好${targetCount.value}个`;
-                } else {
-                    for (let i = targetCount.value; i <= Math.min(draw, targetCoinCount); i++) {
-                        probability += combination(targetCoinCount, i) * 
-                                      combination(total - targetCoinCount, draw - i) / 
-                                      combination(total, draw);
-                    }
-                    description = `${coinTypes[coinType.value]}至少${targetCount.value}个`;
+                }
+                
+                probability = baseProbability + extraProbability * extraChance;
+                
+                const modifiers = [];
+                if (enableXiaoba.value) modifiers.push('小八界');
+                if (drawnCoinCount > 0) modifiers.push(`受引×${drawnCoinCount}`);
+                if (modifiers.length > 0) {
+                    description += `（${modifiers.join('+')}）`;
                 }
             }
             
@@ -864,6 +1115,44 @@ createApp({
                 planExchangeResult.value = {};
             }
         }
+        
+        // 品相模式函数
+        function startPatinaMode() {
+            patinaMode.value = true;
+            patinaSelectedSlot.value = null;
+            patinaSelectedPatina.value = null;
+        }
+        
+        function endPatinaMode() {
+            patinaMode.value = false;
+            patinaSelectedSlot.value = null;
+            patinaSelectedPatina.value = null;
+        }
+        
+        function selectCoinForPatina(idx) {
+            if (!coinBox.value[idx]) return;
+            patinaSelectedSlot.value = patinaSelectedSlot.value === idx ? null : idx;
+            patinaSelectedPatina.value = null; // 重置选中的品相
+        }
+        
+        function selectPatina(patinaKey) {
+            patinaSelectedPatina.value = patinaKey;
+        }
+        
+        function applyPatina(patinaKey) {
+            if (patinaSelectedSlot.value === null) return;
+            coinPatinas.value[patinaSelectedSlot.value] = patinaKey;
+            patinaSelectedSlot.value = null;
+            patinaSelectedPatina.value = null;
+        }
+        
+        function removePatina(idx) {
+            delete coinPatinas.value[idx];
+        }
+        
+        function getPatinaForSlot(idx) {
+            return coinPatinas.value[idx] || null;
+        }
 
         return {
             mode,
@@ -875,6 +1164,18 @@ createApp({
             coinBox,
             coinBoxRows,
             selectedSlot,
+            patinaMode,
+            patinaSelectedSlot,
+            patinaSelectedPatina,
+            coinPatinas,
+            patinasConfig,
+            startPatinaMode,
+            endPatinaMode,
+            selectCoinForPatina,
+            selectPatina,
+            applyPatina,
+            removePatina,
+            getPatinaForSlot,
             selectSlot,
             replaceCoin,
             handleCoinClick,
@@ -890,9 +1191,20 @@ createApp({
             redoCoinBox,
             drawCount,
             coinBoxCapacity,
+            enableXiaoba,
+            judgeMode,
             coinType,
             condition,
             targetCount,
+            selectedComboCoins,
+            comboMode,
+            comboSelectMode,
+            comboAllowPartial,
+            startComboSelect,
+            cancelComboSelect,
+            addToComboCoin,
+            removeFromCombo,
+            calculateComboProbability,
             comboSpend,
             comboLi,
             comboHeng,

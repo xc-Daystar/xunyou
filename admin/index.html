@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通宝管理后台</title>
+    <script src="/vue.min.js"></script>
+    <!-- 系统字体，无需加载 Google Fonts -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #F7F3ED;
+            --text-title: #2C2C2C;
+            --text-body: #5F5F5F;
+            --accent-red: #C04851;
+            --accent-gold: #D4B106;
+            --border-light: rgba(44,44,44,0.1);
+            --border-medium: rgba(44,44,44,0.2);
+        }
+        html, body { height: 100%; }
+        body {
+            font-family: 'Noto Sans SC', 'PingFang SC', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-body);
+        }
+        body::before {
+            content: "";
+            position: fixed; inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            opacity: 0.03; pointer-events: none; z-index: 0;
+        }
+        #admin { position: relative; z-index: 1; height: 100%; }
+        
+        /* 登录页 */
+        .login-wrap {
+            display: flex; align-items: center; justify-content: center; height: 100%;
+        }
+        .login-box {
+            background: rgba(255,255,255,0.7);
+            border: 1px solid var(--border-light);
+            border-radius: 2px;
+            padding: 40px 36px;
+            width: 380px;
+            text-align: center;
+        }
+        .login-box h2 {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 22px; color: var(--text-title);
+            margin-bottom: 24px; letter-spacing: 0.1em;
+        }
+        .login-box .field {
+            margin-bottom: 14px; text-align: left;
+        }
+        .login-box label {
+            font-size: 12px; color: var(--text-body); display: block; margin-bottom: 4px;
+        }
+        .login-box input {
+            width: 100%; padding: 10px 12px;
+            border: 1px solid var(--border-medium);
+            border-radius: 2px; font-size: 14px;
+            font-family: inherit; background: rgba(255,255,255,0.6);
+            outline: none; transition: border-color 0.2s;
+        }
+        .login-box input:focus { border-color: var(--accent-gold); }
+        .login-box .login-tip {
+            font-size: 12px; color: #999; margin-top: 16px;
+        }
+
+        /* 按钮 */
+        .btn {
+            display: inline-block; padding: 8px 18px; border: none; border-radius: 2px;
+            font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: all 0.2s; line-height: 1.4;
+        }
+        .btn-primary { background: var(--accent-red); color: #fff; }
+        .btn-primary:hover { background: #a83d46; }
+        .btn-gold { background: var(--accent-gold); color: #fff; }
+        .btn-gold:hover { background: #b89905; }
+        .btn-outline {
+            background: transparent; color: var(--text-body);
+            border: 1px solid var(--border-medium);
+        }
+        .btn-outline:hover { background: rgba(0,0,0,0.04); }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-sm { padding: 4px 12px; font-size: 11px; }
+        .btn-block { width: 100%; }
+
+        /* 主面板 */
+        .admin-main {
+            max-width: 1300px; margin: 0 auto; padding: 20px; height: 100%;
+            display: flex; flex-direction: column;
+        }
+        .admin-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px; flex-shrink: 0;
+        }
+        .admin-title {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 22px; font-weight: 700; color: var(--text-title);
+            letter-spacing: 0.08em;
+        }
+        .admin-title a { 
+            font-size: 13px; color: #999; text-decoration: none; margin-left: 10px;
+            font-family: 'Noto Sans SC', sans-serif; font-weight: 400; letter-spacing: 0;
+        }
+        .admin-title a:hover { color: var(--accent-gold); }
+        .admin-actions { display: flex; gap: 10px; align-items: center; }
+        
+        /* 搜索栏 */
+        .toolbar {
+            display: flex; gap: 12px; align-items: center;
+            margin-bottom: 12px; flex-shrink: 0;
+        }
+        .search-input {
+            flex: 1; max-width: 300px; padding: 8px 12px;
+            border: 1px solid var(--border-medium); border-radius: 2px;
+            font-size: 13px; font-family: inherit;
+            background: rgba(255,255,255,0.6); outline: none;
+        }
+        .search-input:focus { border-color: var(--accent-gold); }
+        .record-count { font-size: 12px; color: #999; white-space: nowrap; }
+
+        /* 表格 */
+        .table-wrap {
+            flex: 1; overflow: auto;
+            background: rgba(255,255,255,0.5);
+            border: 1px solid var(--border-light);
+            border-radius: 2px;
+        }
+        table {
+            width: 100%; border-collapse: collapse; font-size: 12px;
+        }
+        thead { position: sticky; top: 0; z-index: 2; }
+        th {
+            background: rgba(242,238,232,0.95);
+            padding: 10px 10px; text-align: left;
+            font-weight: 600; color: var(--text-title);
+            border-bottom: 2px solid var(--border-medium);
+            white-space: nowrap; font-size: 12px;
+        }
+        td {
+            padding: 8px 10px; border-bottom: 1px solid var(--border-light);
+            vertical-align: middle; color: var(--text-body);
+        }
+        tr:hover td { background: rgba(212,177,6,0.05); }
+        .cell-name { font-weight: 600; color: var(--text-title); white-space: nowrap; }
+        .cell-effect { max-width: 240px; font-size: 11px; line-height: 1.5; }
+        .cell-desc { max-width: 200px; font-size: 11px; line-height: 1.5; color: #888; }
+        .cell-img img {
+            width: 40px; height: 40px; border-radius: 2px; object-fit: cover;
+            background: rgba(0,0,0,0.05);
+        }
+        .tag {
+            display: inline-block; padding: 1px 8px; border-radius: 2px;
+            font-size: 11px; font-weight: 500;
+        }
+        .tag-heng { background: rgba(76,175,80,0.12); color: #388E3C; }
+        .tag-li { background: rgba(192,72,81,0.12); color: var(--accent-red); }
+        .tag-hua { background: rgba(212,177,6,0.12); color: #9B8404; }
+        .tag-rarity { background: rgba(0,0,0,0.06); color: var(--text-body); }
+        .cell-actions { white-space: nowrap; display: flex; gap: 4px; }
+
+        /* 弹窗遮罩 */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100; animation: fadeIn 0.15s;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* 表单弹窗 */
+        .modal {
+            background: rgba(250,248,244,0.98);
+            border: 1px solid var(--border-medium);
+            border-radius: 2px;
+            width: 600px; max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+            animation: slideUp 0.2s;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header {
+            padding: 18px 24px; border-bottom: 1px solid var(--border-light);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-header h3 {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 18px; color: var(--text-title);
+            padding-left: 10px; border-left: 3px solid var(--accent-gold);
+        }
+        .modal-close {
+            width: 30px; height: 30px; border: none; background: none;
+            font-size: 20px; cursor: pointer; color: #999;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 2px;
+        }
+        .modal-close:hover { background: rgba(0,0,0,0.06); color: var(--text-body); }
+        .modal-body { padding: 20px 24px; }
+        .modal-footer {
+            padding: 14px 24px; border-top: 1px solid var(--border-light);
+            display: flex; justify-content: flex-end; gap: 10px;
+        }
+
+        /* 表单 */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+        .form-full { grid-column: 1 / -1; }
+        .form-group label {
+            display: block; font-size: 12px; font-weight: 600;
+            color: var(--text-title); margin-bottom: 4px;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 8px 10px;
+            border: 1px solid var(--border-medium); border-radius: 2px;
+            font-size: 13px; font-family: inherit;
+            background: rgba(255,255,255,0.7); outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: var(--accent-gold);
+        }
+        .form-group textarea { min-height: 52px; resize: vertical; }
+        .img-upload-area {
+            display: flex; gap: 12px; align-items: flex-start;
+        }
+        .img-upload-area img {
+            width: 64px; height: 64px; border-radius: 2px; object-fit: cover;
+            border: 1px solid var(--border-light);
+        }
+        .img-upload-area input[type=file] { font-size: 12px; margin-top: 4px; }
+        .upload-hint { font-size: 11px; color: #999; margin-top: 2px; }
+
+        /* 响应式 */
+        @media (max-width: 900px) {
+            .form-grid, .form-grid-3 { grid-template-columns: 1fr; }
+            .modal { width: 95%; }
+        }
+    </style>
+</head>
+<body>
+<div id="admin">
+    <!-- ========== 登录页 ========== -->
+    <div v-if="!session" class="login-wrap">
+        <div class="login-box">
+            <h2>通宝管理后台</h2>
+            <div class="field">
+                <label>邮箱</label>
+                <input v-model="loginEmail" type="email" placeholder="管理员邮箱" @keyup="onEnterLogin">
+            </div>
+            <div class="field">
+                <label>密码</label>
+                <input v-model="loginPassword" type="password" placeholder="管理员密码" @keyup="onEnterLogin">
+            </div>
+            <div v-if="loginError" style="color:#c0392b;font-size:13px;margin-bottom:8px;word-break:break-all;">{{ loginError }}</div>
+            <div v-if="connStatus" :style="{color:connStatus.ok?'#388E3C':'#c0392b',fontSize:'12px',marginBottom:'8px'}">{{ connStatus.text }}</div>
+            <button class="btn btn-primary btn-block" @click="login" :disabled="loginLoading" style="margin-top:8px;">
+                {{ loginLoading ? '登录中...' : '登 录' }}
+            </button>
+            <div class="login-tip">使用 Supabase Auth 管理员账号登录</div>
+        </div>
+    </div>
+
+    <!-- ========== 管理主界面 ========== -->
+    <div v-else class="admin-main">
+        <div class="admin-header">
+            <div class="admin-title">
+                通宝数据管理
+                <a href="/">← 返回主页面</a>
+            </div>
+            <div class="admin-actions">
+                <span class="record-count">共 {{ list.length }} 条记录</span>
+                <button class="btn btn-gold" @click="openAdd">+ 新增通宝</button>
+                <button class="btn btn-outline" @click="logout">退出登录</button>
+            </div>
+        </div>
+        <div class="toolbar">
+            <input class="search-input" v-model="searchText" placeholder="搜索名称、效果、分类...">
+            <select class="search-input" v-model="filterCategory" style="max-width:140px;">
+                <option value="">全部分类</option>
+                <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+            </select>
+            <select class="search-input" v-model="filterType" style="max-width:80px;">
+                <option value="">全部类型</option>
+                <option value="厉">厉</option>
+                <option value="花">花</option>
+                <option value="衡">衡</option>
+            </select>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:56px;">图片</th>
+                        <th>名称</th>
+                        <th>类型</th>
+                        <th>分类</th>
+                        <th>稀有度</th>
+                        <th>价值</th>
+                        <th>效果</th>
+                        <th>描述</th>
+                        <th style="width:100px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="coin in filteredList" :key="coin.id">
+                        <td class="cell-img">
+                            <img v-if="coin.image_url" :src="coin.image_url" @error="e=>e.target.style.display='none'">
+                        </td>
+                        <td class="cell-name">{{ coin.name }}</td>
+                        <td>
+                            <span class="tag" :class="'tag-' + typeTag(coin.type)">{{ coin.type }}</span>
+                        </td>
+                        <td>{{ coin.category }}</td>
+                        <td>
+                            <span class="tag tag-rarity">{{ coin.rarity || '-' }}</span>
+                        </td>
+                        <td>{{ coin.value || '-' }}</td>
+                        <td class="cell-effect" :title="coin.effect">{{ coin.effect }}</td>
+                        <td class="cell-desc" :title="coin.description">{{ coin.description }}</td>
+                        <td class="cell-actions">
+                            <button class="btn btn-outline btn-sm" @click="openEdit(coin)">编辑</button>
+                            <button class="btn btn-danger btn-sm" @click="confirmDelete(coin)">删除</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========== 编辑弹窗 ========== -->
+    <div v-if="showForm" class="overlay" @click.self="closeForm">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>{{ isEditing ? '编辑通宝' : '新增通宝' }}</h3>
+                <button class="modal-close" @click="closeForm">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>名称 *</label>
+                        <input v-model="form.name" placeholder="如：大炎通宝">
+                    </div>
+                    <div class="form-group">
+                        <label>文件名 ID *</label>
+                        <input v-model="form.file_name" placeholder="rogue_5_copper_B_01" :disabled="isEditing">
+                    </div>
+                    <div class="form-group">
+                        <label>类型 *</label>
+                        <select v-model="form.type">
+                            <option value="衡">衡</option>
+                            <option value="厉">厉</option>
+                            <option value="花">花</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>分类</label>
+                        <select v-model="form.category">
+                            <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>稀有度</label>
+                        <select v-model="form.rarity">
+                            <option value="">无</option>
+                            <option value="普通">普通</option>
+                            <option value="稀有">稀有</option>
+                            <option value="绝世">绝世</option>
+                            <option value="传说">传说</option>
+                            <option value="异常">异常</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>价值</label>
+                        <input v-model.number="form.value" type="number" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>收益类型</label>
+                        <input v-model="form.benefit_type" placeholder="1=生命上限">
+                    </div>
+                    <div class="form-group">
+                        <label>获取方式</label>
+                        <input v-model="form.source" placeholder="获取途径">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:14px;">
+                    <label>效果 *</label>
+                    <textarea v-model="form.effect" rows="2" placeholder="投出时的效果描述"></textarea>
+                </div>
+                <div class="form-group" style="margin-top:14px;">
+                    <label>背景描述</label>
+                    <textarea v-model="form.description" rows="2" placeholder="通宝背景故事"></textarea>
+                </div>
+                <div class="form-group" style="margin-top:14px;">
+                    <label>备注</label>
+                    <textarea v-model="form.remark" rows="1" placeholder="额外备注"></textarea>
+                </div>
+                <div class="form-group" style="margin-top:14px;">
+                    <label>图片管理</label>
+                    <div class="img-upload-area">
+                        <img v-if="form.image_url" :src="form.image_url" @error="e=>e.target.style.display='none'">
+                        <div>
+                            <input type="file" accept="image/png" @change="handleImageUpload">
+                            <div class="upload-hint">上传 PNG 图片（文件名 ID + .png）</div>
+                            <input v-model="form.image_url" placeholder="或手动填写图片直链 URL" style="margin-top:6px;font-size:12px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @click="closeForm">取消</button>
+                <button class="btn btn-primary" @click="save" :disabled="saving">
+                    {{ saving ? '保存中...' : '保存' }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted } = Vue;
+
+const API = 'https://vsxzzxqwnipgwumhlczd.supabase.co';
+const KEY = 'sb_publishable_UvLloV7W1DEyhBDu8mMMRw_oeuSp8e0';
+const BUCKET = 'tongbao-images';
+
+// ── 工具：带认证头的 fetch ──
+function apiHeaders(token) {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': KEY,
+    'Authorization': 'Bearer ' + token
+  };
+}
+
+// ── Auth REST API ──
+async function apiLogin(email, password) {
+  const r = await fetch(`${API}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': KEY },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error_description || data.msg || '登录失败');
+  return data;
+}
+
+async function apiLogout(token) {
+  await fetch(`${API}/auth/v1/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': KEY, 'Authorization': 'Bearer ' + token }
+  });
+}
+
+async function apiGetSession(token) {
+  const r = await fetch(`${API}/auth/v1/user`, {
+    headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + token }
+  });
+  return r.ok ? await r.json() : null;
+}
+
+// ── 通宝数据 CRUD ──
+async function apiLoadTongbao(token) {
+  const r = await fetch(`${API}/rest/v1/tongbao?select=*&order=file_name.asc`, {
+    headers: apiHeaders(token)
+  });
+  return await r.json();
+}
+
+async function apiInsertTongbao(token, row) {
+  const r = await fetch(`${API}/rest/v1/tongbao`, {
+    method: 'POST',
+    headers: { ...apiHeaders(token), 'Prefer': 'return=representation' },
+    body: JSON.stringify(row)
+  });
+  if (!r.ok) throw new Error((await r.json()).message || '新增失败');
+  return r.json();
+}
+
+async function apiUpdateTongbao(token, id, row) {
+  const r = await fetch(`${API}/rest/v1/tongbao?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: { ...apiHeaders(token), 'Prefer': 'return=representation' },
+    body: JSON.stringify(row)
+  });
+  if (!r.ok) throw new Error((await r.json()).message || '更新失败');
+  return r.json();
+}
+
+async function apiDeleteTongbao(token, id) {
+  const r = await fetch(`${API}/rest/v1/tongbao?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: apiHeaders(token)
+  });
+  if (!r.ok) throw new Error((await r.json()).message || '删除失败');
+}
+
+// ── 图片上传 ──
+async function apiUploadImage(token, path, file) {
+  const r = await fetch(`${API}/storage/v1/object/${BUCKET}/${path}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'apikey': KEY,
+      'Content-Type': file.type,
+      'x-upsert': 'true'
+    },
+    body: file
+  });
+  if (!r.ok) throw new Error((await r.json()).message || '上传失败');
+  return path;
+}
+
+createApp({
+    setup() {
+        const session = ref(null);
+        const loginEmail = ref('');
+        const loginPassword = ref('');
+        const loginError = ref('');
+        const loginLoading = ref(false);
+        const list = ref([]);
+        const searchText = ref('');
+        const filterCategory = ref('');
+        const filterType = ref('');
+        const showForm = ref(false);
+        const isEditing = ref(false);
+        const uploading = ref(false);
+        const saving = ref(false);
+        const pageReady = ref(false);  // true when has token (or not)
+        const connStatus = ref(null);   // { ok: bool, text: string }
+
+        const categories = ['随盒赠钱', '待铸子钱', '富贵商钱', '砺武兵钱', '天师奇钱'];
+        const catEng = {
+            '随盒赠钱': 'suihe', '待铸子钱': 'daizhu',
+            '富贵商钱': 'fugui', '砺武兵钱': 'liwu', '天师奇钱': 'tianshi'
+        };
+
+        const emptyForm = () => ({
+            file_name: '', category: '随盒赠钱', type: '衡', name: '',
+            effect: '', description: '', source: '', benefit_type: '',
+            value: 0, rarity: '', remark: '', image_url: ''
+        });
+        const form = ref(emptyForm());
+
+        const filteredList = computed(() => {
+            let arr = list.value;
+            if (filterCategory.value) arr = arr.filter(c => c.category === filterCategory.value);
+            if (filterType.value) arr = arr.filter(c => c.type === filterType.value);
+            if (searchText.value) {
+                const kw = searchText.value.toLowerCase();
+                arr = arr.filter(c =>
+                    (c.name && c.name.toLowerCase().includes(kw)) ||
+                    (c.effect && c.effect.toLowerCase().includes(kw)) ||
+                    (c.file_name && c.file_name.toLowerCase().includes(kw))
+                );
+            }
+            return arr;
+        });
+
+        function typeTag(t) { return { '衡': 'heng', '厉': 'li', '花': 'hua' }[t] || 'heng'; }
+
+        async function loadList() {
+            if (!session.value) return;
+            try {
+                list.value = await apiLoadTongbao(session.value.access_token);
+            } catch(e) {
+                console.error('加载列表失败:', e);
+            }
+        }
+
+        onMounted(async () => {
+            // 先测试 Supabase 连接
+            try {
+                const r = await fetch(`${API}/rest/v1/tongbao?select=id&limit=1`, {
+                    headers: { 'apikey': KEY }
+                });
+                if (r.ok) {
+                    connStatus.value = { ok: true, text: '✓ Supabase 连接正常' };
+                } else {
+                    connStatus.value = { ok: false, text: '✗ Supabase 响应异常: ' + r.status };
+                }
+            } catch(e) {
+                connStatus.value = { ok: false, text: '✗ 无法连接 Supabase: ' + (e.message || '网络错误') };
+            }
+
+            const token = localStorage.getItem('admin_token');
+            if (token) {
+                const user = await apiGetSession(token);
+                if (user) {
+                    session.value = { access_token: token, user: { email: user.email } };
+                    await loadList();
+                } else {
+                    localStorage.removeItem('admin_token');
+                }
+            }
+            pageReady.value = true;
+        });
+
+        async function login() {
+            loginError.value = '';
+            connStatus.value = null;
+            if (!loginEmail.value || !loginPassword.value) { loginError.value = '请输入邮箱和密码'; return; }
+            loginLoading.value = true;
+            try {
+                const data = await apiLogin(loginEmail.value, loginPassword.value);
+                session.value = data;
+                localStorage.setItem('admin_token', data.access_token);
+                await loadList();
+            } catch(e) {
+                if (e.message === 'Failed to fetch' || e.name === 'TypeError') {
+                    loginError.value = '网络连接失败，请检查网络或 Supabase 是否正常';
+                } else {
+                    loginError.value = e.message;
+                }
+            }
+            loginLoading.value = false;
+        }
+
+        async function logout() {
+            if (session.value) {
+                await apiLogout(session.value.access_token).catch(()=>{});
+            }
+            localStorage.removeItem('admin_token');
+            session.value = null;
+            list.value = [];
+        }
+
+        function openAdd() {
+            isEditing.value = false;
+            form.value = emptyForm();
+            showForm.value = true;
+        }
+
+        function openEdit(coin) {
+            isEditing.value = true;
+            form.value = { ...coin, value: coin.value || 0 };
+            showForm.value = true;
+        }
+
+        function closeForm() { showForm.value = false; }
+
+        async function save() {
+            if (!form.value.name || !form.value.file_name) {
+                alert('名称和文件名 ID 不能为空'); return;
+            }
+            saving.value = true;
+            try {
+                if (isEditing.value) {
+                    const id = form.value.id;
+                    const row = { ...form.value };
+                    delete row.id;
+                    await apiUpdateTongbao(session.value.access_token, id, row);
+                } else {
+                    await apiInsertTongbao(session.value.access_token, form.value);
+                }
+                await loadList();
+                closeForm();
+            } catch(e) {
+                alert((isEditing.value ? '更新' : '新增') + '失败: ' + e.message);
+            }
+            saving.value = false;
+        }
+
+        async function confirmDelete(coin) {
+            if (!confirm(`确定删除【${coin.name}】？此操作不可恢复！`)) return;
+            try {
+                await apiDeleteTongbao(session.value.access_token, coin.id);
+                await loadList();
+            } catch(e) {
+                alert('删除失败: ' + e.message);
+            }
+        }
+
+        function onEnterLogin(e) { if (e.key === 'Enter') login(); }
+
+        async function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            uploading.value = true;
+            const engFolder = catEng[form.value.category] || 'suihe';
+            const fileName = form.value.file_name ? form.value.file_name + '.png' : 'custom_' + Date.now() + '.png';
+            try {
+                const path = await apiUploadImage(session.value.access_token, `${engFolder}/${fileName}`, file);
+                form.value.image_url = `${API}/storage/v1/object/public/${BUCKET}/${path}`;
+            } catch(e) {
+                alert('图片上传失败: ' + e.message);
+            }
+            uploading.value = false;
+            e.target.value = '';
+        }
+
+        return {
+            session, loginEmail, loginPassword, loginError, loginLoading, pageReady, connStatus,
+            list, searchText, filterCategory, filterType, filteredList,
+            showForm, isEditing, form, categories, typeTag,
+            login, logout,
+            openAdd, openEdit, closeForm, save, confirmDelete,
+            handleImageUpload, onEnterLogin, uploading, saving
+        };
+    }
+}).mount('#admin');
+</script>
+</body>
+</html>

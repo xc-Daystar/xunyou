@@ -41,6 +41,9 @@ body::before {
     flex-direction: column;
     overflow: hidden;
 }
+.right-panel {
+    overflow-y: auto;
+}
 .page-title {
     font-family: 'Noto Serif SC', serif;
     font-size: 20px;
@@ -111,7 +114,8 @@ body::before {
     cursor: pointer;
     transition: all 0.2s;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
+    flex-shrink: 0;
 }
 .coin-slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .coin-slot:hover { transform: scale(1.05); }
@@ -695,4 +699,353 @@ body::before {
         gap: 6px;
         align-items: flex-start;
     }
+}
+
+
+/* 品相模式样式 */
+.patina-rules {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+}
+.patina-rules-title {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-title);
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(44, 44, 44, 0.1);
+}
+.patina-rules-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    overflow-y: auto;
+}
+.patina-rule-item {
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 2px;
+    border-left: 3px solid var(--accent-gold);
+}
+.patina-rule-label {
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--text-title);
+    margin-bottom: 3px;
+}
+.patina-rule-desc {
+    font-size: 10px;
+    color: var(--text-body);
+    line-height: 1.3;
+}
+.patina-exchange-status {
+    padding: 6px;
+    background: rgba(212, 177, 6, 0.1);
+    border: 1px solid rgba(212, 177, 6, 0.3);
+    border-radius: 2px;
+    color: var(--accent-gold);
+    font-weight: 600;
+    font-size: 11px;
+    text-align: center;
+}
+.patina-pool-section {
+    margin-top: 12px;
+    padding: 10px;
+    background: rgba(212, 177, 6, 0.05);
+    border: 1px solid rgba(212, 177, 6, 0.2);
+    border-radius: 2px;
+}
+.patina-pool-header {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--text-title);
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(44, 44, 44, 0.1);
+}
+.patina-list {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 6px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+    margin-bottom: 10px;
+}
+.patina-item-compact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(44, 44, 44, 0.1);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    min-width: 60px;
+}
+.patina-item-compact:hover {
+    background: rgba(212, 177, 6, 0.15);
+    border-color: var(--accent-gold);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.patina-item-compact-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 2px;
+}
+.patina-item-compact-name {
+    font-size: 9px;
+    color: var(--text-title);
+    text-align: center;
+    font-weight: 600;
+    line-height: 1.2;
+}
+.patina-detail-section {
+    padding: 10px;
+    background: rgba(212, 177, 6, 0.08);
+    border: 1px solid rgba(212, 177, 6, 0.3);
+    border-radius: 2px;
+    margin-top: 10px;
+}
+.patina-detail-header {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-title);
+    margin-bottom: 6px;
+}
+.patina-detail-desc {
+    font-size: 11px;
+    color: var(--text-body);
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+.coin-slot.patina-selected {
+    box-shadow: 0 0 0 3px var(--accent-gold);
+}
+.coin-slot-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+    width: 90px;
+    min-height: 70px;
+}
+.patina-mark {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: 32px;
+    height: 32px;
+    border-radius: 2px;
+    overflow: visible;
+    z-index: 10;
+    background: transparent;
+}
+.patina-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 1px;
+}
+.patina-label-icon {
+    display: inline-block;
+    margin-left: 2px;
+    width: 12px;
+    height: 12px;
+    vertical-align: middle;
+}
+.patina-label-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 2px;
+}
+
+/* 小八界勾选框 */
+.xiaoba-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: rgba(212, 177, 6, 0.08);
+    border: 1px solid rgba(212, 177, 6, 0.3);
+    border-radius: 2px;
+    margin-top: 8px;
+}
+.xiaoba-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    object-fit: cover;
+}
+.xiaoba-checkbox label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-body);
+    flex: 1;
+}
+.xiaoba-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-gold);
+}
+.xiaoba-checkbox label span {
+    user-select: none;
+}
+
+/* 判定模式标签 */
+.judge-tabs {
+    display: flex;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-medium);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.judge-tab {
+    flex: 1;
+    padding: 8px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-body);
+    background: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-right: 1px solid var(--border-light);
+}
+.judge-tab:last-child { border-right: none; }
+.judge-tab:hover { background: rgba(255, 255, 255, 0.6); }
+.judge-tab.active { background: var(--accent-red); color: #fff; }
+
+/* 指定组合模式标签 */
+.combo-mode-tabs {
+    display: flex;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-medium);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.combo-mode-tab {
+    flex: 1;
+    padding: 8px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-body);
+    background: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-right: 1px solid var(--border-light);
+}
+.combo-mode-tab:last-child { border-right: none; }
+.combo-mode-tab:hover { background: rgba(255, 255, 255, 0.6); }
+.combo-mode-tab.active { background: var(--accent-gold); color: #fff; }
+
+/* 指定组合样式 */
+.combo-desc {
+    font-size: 11px;
+    color: var(--text-body);
+    margin-bottom: 8px;
+    padding: 6px;
+    background: rgba(212, 177, 6, 0.08);
+    border-radius: 2px;
+}
+.combo-selection {
+    margin-bottom: 10px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.3);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+}
+.combo-selected-coins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+    min-height: 30px;
+}
+.combo-selected-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    background: rgba(212, 177, 6, 0.15);
+    border: 1px solid rgba(212, 177, 6, 0.3);
+    border-radius: 2px;
+    font-size: 10px;
+}
+.combo-selected-item img {
+    width: 20px;
+    height: 20px;
+    border-radius: 2px;
+}
+.combo-selected-name {
+    color: var(--text-title);
+    font-weight: 600;
+}
+.combo-remove-btn {
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--accent-red);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+}
+.combo-remove-btn:hover {
+    color: #8B0000;
+}
+.combo-info {
+    font-size: 10px;
+    color: var(--text-body);
+    text-align: center;
+}
+.combo-remaining {
+    color: var(--accent-red);
+    font-weight: 600;
+}
+.combo-options {
+    margin-bottom: 10px;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+}
+.combo-options label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-body);
+    margin-bottom: 4px;
+    cursor: pointer;
+}
+.combo-options label:last-child {
+    margin-bottom: 0;
+}
+.combo-options input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    accent-color: var(--accent-gold);
 }

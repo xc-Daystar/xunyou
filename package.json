@@ -4,5 +4,8 @@
   "scripts": {
     "start": "npx serve .",
     "dev": "npx live-server --port=3000"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.2"
   }
 }
